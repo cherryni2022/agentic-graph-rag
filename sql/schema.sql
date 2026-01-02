@@ -129,6 +129,8 @@ BEGIN
         FROM chunks c
         JOIN documents d ON c.document_id = d.id
         WHERE c.embedding IS NOT NULL
+        ORDER BY c.embedding <=> query_embedding  -- ✅ 利用 IVFFlat 索引
+        LIMIT match_count * 2  -- ✅ 只取前 N 条，避免全表扫描
     ),
     text_results AS (
         SELECT 
@@ -142,6 +144,8 @@ BEGIN
         FROM chunks c
         JOIN documents d ON c.document_id = d.id
         WHERE to_tsvector('english', c.content) @@ plainto_tsquery('english', query_text)
+        ORDER BY text_sim DESC  -- ✅ 按相关性排序
+        LIMIT match_count * 2   -- ✅ 只取前 N 条
     )
     SELECT 
         COALESCE(v.chunk_id, t.chunk_id) AS chunk_id,
@@ -156,6 +160,99 @@ BEGIN
     FROM vector_results v
     FULL OUTER JOIN text_results t ON v.chunk_id = t.chunk_id
     ORDER BY combined_score DESC
+    LIMIT match_count;
+END;
+$$;
+
+-- Reciprocal Rank Fusion (RRF) based hybrid search
+-- RRF formula: score = 1/(k + rank) where k=60 is a constant
+-- This method is more robust to different score scales and doesn't require weight tuning
+CREATE OR REPLACE FUNCTION hybrid_search2(
+    query_embedding vector(1536),
+    query_text TEXT,
+    match_count INT DEFAULT 10,
+    rrf_k INT DEFAULT 60  -- RRF constant, typically 60
+)
+RETURNS TABLE(
+    chunk_id UUID,
+    document_id UUID,
+    content TEXT,
+    rrf_score FLOAT,
+    vector_rank INT,
+    text_rank INT,
+    vector_similarity FLOAT,
+    text_similarity FLOAT,
+    metadata JSONB,
+    document_title TEXT,
+    document_source TEXT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY
+    WITH vector_results AS (
+        SELECT 
+            c.id AS chunk_id,
+            c.document_id,
+            c.content,
+            1 - (c.embedding <=> query_embedding) AS vector_sim,
+            c.metadata,
+            d.title AS doc_title,
+            d.source AS doc_source,
+            ROW_NUMBER() OVER (ORDER BY c.embedding <=> query_embedding) AS v_rank
+        FROM chunks c
+        JOIN documents d ON c.document_id = d.id
+        WHERE c.embedding IS NOT NULL
+        ORDER BY c.embedding <=> query_embedding
+        LIMIT match_count * 2
+    ),
+    text_results AS (
+        SELECT 
+            c.id AS chunk_id,
+            c.document_id,
+            c.content,
+            ts_rank_cd(to_tsvector('english', c.content), plainto_tsquery('english', query_text)) AS text_sim,
+            c.metadata,
+            d.title AS doc_title,
+            d.source AS doc_source,
+            ROW_NUMBER() OVER (ORDER BY ts_rank_cd(to_tsvector('english', c.content), plainto_tsquery('english', query_text)) DESC) AS t_rank
+        FROM chunks c
+        JOIN documents d ON c.document_id = d.id
+        WHERE to_tsvector('english', c.content) @@ plainto_tsquery('english', query_text)
+        LIMIT match_count * 2
+    ),
+    -- Combine results using RRF formula
+    combined AS (
+        SELECT 
+            COALESCE(v.chunk_id, t.chunk_id) AS chunk_id,
+            COALESCE(v.document_id, t.document_id) AS document_id,
+            COALESCE(v.content, t.content) AS content,
+            -- RRF score: sum of 1/(k + rank) for each ranking system
+            (COALESCE(1.0 / (rrf_k + v.v_rank), 0.0) + COALESCE(1.0 / (rrf_k + t.t_rank), 0.0)) AS rrf_score,
+            v.v_rank::INT AS vector_rank,
+            t.t_rank::INT AS text_rank,
+            COALESCE(v.vector_sim, 0.0) AS vector_similarity,
+            COALESCE(t.text_sim, 0.0) AS text_similarity,
+            COALESCE(v.metadata, t.metadata) AS metadata,
+            COALESCE(v.doc_title, t.doc_title) AS document_title,
+            COALESCE(v.doc_source, t.doc_source) AS document_source
+        FROM vector_results v
+        FULL OUTER JOIN text_results t ON v.chunk_id = t.chunk_id
+    )
+    SELECT 
+        chunk_id,
+        document_id,
+        content,
+        rrf_score,
+        vector_rank,
+        text_rank,
+        vector_similarity,
+        text_similarity,
+        metadata,
+        document_title,
+        document_source
+    FROM combined
+    ORDER BY rrf_score DESC
     LIMIT match_count;
 END;
 $$;

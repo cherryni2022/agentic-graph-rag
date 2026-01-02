@@ -18,6 +18,9 @@ from graphiti_core.embedder.openai import OpenAIEmbedder, OpenAIEmbedderConfig
 from graphiti_core.cross_encoder.openai_reranker_client import OpenAIRerankerClient
 from dotenv import load_dotenv
 
+# Import universal LLM client for better model compatibility
+from .universal_llm_client import UniversalLLMClient
+
 # Load environment variables
 load_dotenv()
 
@@ -83,8 +86,14 @@ class GraphitiClient:
                 base_url=self.llm_base_url
             )
             
-            # Create OpenAI LLM client
-            llm_client = OpenAIClient(config=llm_config)
+            # Create Universal LLM client (supports GLM and other models)
+            # This client automatically falls back to manual JSON parsing
+            # if the model doesn't support OpenAI's structured output API
+            llm_client = UniversalLLMClient(
+                config=llm_config,
+                use_structured_output=True,  # Try structured output first
+                fallback_to_manual_parsing=True  # Fallback to manual parsing for GLM
+            )
             
             # Create OpenAI embedder
             embedder = OpenAIEmbedder(
@@ -341,7 +350,11 @@ class GraphitiClient:
                 base_url=self.llm_base_url
             )
             
-            llm_client = OpenAIClient(config=llm_config)
+            llm_client = UniversalLLMClient(
+                config=llm_config,
+                use_structured_output=True,
+                fallback_to_manual_parsing=True
+            )
             
             embedder = OpenAIEmbedder(
                 config=OpenAIEmbedderConfig(
@@ -453,8 +466,12 @@ async def test_graph_connection() -> bool:
     try:
         await graph_client.initialize()
         stats = await graph_client.get_graph_statistics()
+        print(f"Graph connection successful. Stats: {stats}")
         logger.info(f"Graph connection successful. Stats: {stats}")
         return True
     except Exception as e:
         logger.error(f"Graph connection test failed: {e}")
         return False
+
+if __name__ == "__main__":
+    asyncio.run(test_graph_connection())

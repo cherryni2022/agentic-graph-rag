@@ -8,6 +8,7 @@ Supabase Client SDK 使用示例
 import os
 from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
+from datetime import datetime, timedelta, timezone
 from supabase import create_client, Client
 import asyncio
 
@@ -47,8 +48,9 @@ class SupabaseService:
     def create_session(
         self,
         user_id: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        metadata: Optional[Dict[str, Any]] = None,
+        timeout_minutes: int = 60
+    ) -> str:
         """
         创建新会话
         
@@ -59,13 +61,15 @@ class SupabaseService:
         Returns:
             创建的会话记录
         """
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=timeout_minutes)
         data = {
             "user_id": user_id,
-            "metadata": metadata or {}
+            "metadata": json.dumps(metadata or {}),
+            "expires_at": expires_at
         }
         
         result = self.client.table("sessions").insert(data).execute()
-        return result.data[0] if result.data else None
+        return result.data[0]["id"]
     
     def get_session(self, session_id: str) -> Optional[Dict[str, Any]]:
         """
@@ -89,7 +93,7 @@ class SupabaseService:
         self,
         session_id: str,
         metadata: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    ) -> Optional[Dict[str, Any]]:
         """
         更新会话元数据
         

@@ -295,6 +295,19 @@ This document tracks all tasks for building the agentic RAG system with knowledg
 
 ---
 
+## Phase 8: LLM Provider Compatibility
+
+### GLM Model Support (2026-01-02)
+- [x] **FIXED**: GLM model returns JSON wrapped in markdown code blocks (```json...```)
+  - Root cause: GLM models output JSON inside ``` code blocks unlike Gemini/OpenAI
+  - Solution: Enable UniversalLLMClient in graph_utils.py
+- [x] **FIXED**: Enhance _extract_json to handle both JSON objects {...} and arrays [...]
+- [x] **FIXED**: Add _adapt_json_structure to auto-convert array format to expected object structure
+- [x] **FIXED**: Override _generate_response method (not generate_response) to intercept Graphiti calls
+- [x] Create test script test_glm_json_parsing.py to verify fixes
+
+---
+
 ## Project Status
 
 ✅ **All core functionality completed and tested**
@@ -304,5 +317,6 @@ This document tracks all tasks for building the agentic RAG system with knowledg
 ✅ **Flexible provider system implemented**
 ✅ **CLI with agent transparency features**
 ✅ **Graphiti integration with OpenAI-compatible clients**
+✅ **GLM model compatibility via UniversalLLMClient**
 
 The agentic RAG with knowledge graph system is complete and ready for production use.

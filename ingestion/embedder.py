@@ -62,7 +62,9 @@ class EmbeddingGenerator:
         self.model_configs = {
             "text-embedding-3-small": {"dimensions": 1536, "max_tokens": 8191},
             "text-embedding-3-large": {"dimensions": 3072, "max_tokens": 8191},
-            "text-embedding-ada-002": {"dimensions": 1536, "max_tokens": 8191}
+            "text-embedding-ada-002": {"dimensions": 1536, "max_tokens": 8191},
+            "gemini-embedding-001": {"dimensions": 1536, "max_tokens": 8191},
+            "embedding-3": {"dimensions": 1536, "max_tokens": 8191},
         }
         
         if model not in self.model_configs:
@@ -89,7 +91,8 @@ class EmbeddingGenerator:
             try:
                 response = await embedding_client.embeddings.create(
                     model=self.model,
-                    input=text
+                    input=text,
+                    dimensions=self.config["dimensions"]
                 )
                 
                 return response.data[0].embedding
@@ -147,7 +150,8 @@ class EmbeddingGenerator:
             try:
                 response = await embedding_client.embeddings.create(
                     model=self.model,
-                    input=processed_texts
+                    input=processed_texts,
+                    dimensions=self.config["dimensions"]
                 )
                 
                 return [data.embedding for data in response.data]
@@ -381,7 +385,7 @@ async def main():
     from .chunker import ChunkingConfig, create_chunker
     
     # Create chunker and embedder
-    config = ChunkingConfig(chunk_size=200, use_semantic_splitting=False)
+    config = ChunkingConfig(chunk_size=300, use_semantic_splitting=False)
     chunker = create_chunker(config)
     embedder = create_embedder()
     
