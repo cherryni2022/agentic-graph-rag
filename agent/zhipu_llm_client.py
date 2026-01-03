@@ -350,20 +350,19 @@ class ZhipuAIClient(LLMClient):
         
         # Build enhanced prompt
         enhancement = f"""
+            CRITICAL OUTPUT REQUIREMENTS:
+            1. You MUST output ONLY valid JSON, no explanatory text before or after.
+            2. Do NOT include markdown code blocks (no ``` markers).
+            3. The JSON MUST be a single object (dictionary), NOT an array/list.
+            4. Follow this exact structure:
 
-CRITICAL OUTPUT REQUIREMENTS:
-1. You MUST output ONLY valid JSON, no explanatory text before or after.
-2. Do NOT include markdown code blocks (no ``` markers).
-3. The JSON MUST be a single object (dictionary), NOT an array/list.
-4. Follow this exact structure:
+            {simplified}
 
-{simplified}
+            Full JSON Schema for reference:
+            {json.dumps(schema_json, indent=2)}
 
-Full JSON Schema for reference:
-{json.dumps(schema_json, indent=2)}
-
-Remember: Output ONLY the JSON object, nothing else.
-"""
+            Remember: Output ONLY the JSON object, nothing else.
+            """
         return f"{original_system}{enhancement}"
 
     def _validate_and_normalize(

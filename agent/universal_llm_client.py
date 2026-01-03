@@ -105,7 +105,8 @@ class UniversalLLMClient(OpenAIClient):
                 parsed = response.choices[0].message.parsed
                 if parsed:
                     logger.debug("Successfully used structured output API")
-                    return parsed
+                    # Return dict to match Graphiti's expected format
+                    return parsed.model_dump()
                     
             except Exception as e:
                 logger.warning(f"Structured output failed: {e}")
@@ -118,10 +119,10 @@ class UniversalLLMClient(OpenAIClient):
     
     async def _manual_json_parsing(
         self,
-        messages: List[Dict[str, str]],
+        messages: List,
         response_model: Type[BaseModel],
         **kwargs
-    ) -> BaseModel:
+    ) -> Dict[str, Any]:
         """
         Manually parse JSON response from LLM.
         
@@ -162,7 +163,8 @@ class UniversalLLMClient(OpenAIClient):
             
             validated = response_model.model_validate(parsed_data)
             logger.debug(f"Successfully parsed and validated JSON response")
-            return validated
+            # Return dict to match Graphiti's expected format
+            return validated.model_dump()
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse JSON: {e}")
             logger.error(f"Raw content: {content}")
@@ -224,18 +226,20 @@ class UniversalLLMClient(OpenAIClient):
     
     def _enhance_messages_for_json(
         self,
-        messages: List[Dict[str, str]],
+        messages: List,
         response_model: Type[BaseModel]
     ) -> List[Dict[str, str]]:
         """
         Enhance messages to request JSON output.
         
+        Handles both dict messages and Graphiti Message objects.
+        
         Args:
-            messages: Original messages
+            messages: Original messages (can be dicts or Message objects)
             response_model: Pydantic model schema
             
         Returns:
-            Enhanced messages
+            Enhanced messages as list of dicts
         """
         # Get JSON schema from Pydantic model
         schema = response_model.model_json_schema()
@@ -254,10 +258,25 @@ Rules:
 5. Use proper JSON formatting (quotes, commas, brackets)
 """
         
-        enhanced_messages = messages.copy()
+        # Convert messages to dicts if they are Message objects
+        enhanced_messages = []
+        for msg in messages:
+            if hasattr(msg, 'role') and hasattr(msg, 'content'):
+                # It's a Message object - convert to dict
+                enhanced_messages.append({
+                    "role": msg.role if isinstance(msg.role, str) else str(msg.role),
+                    "content": msg.content
+                })
+            elif isinstance(msg, dict):
+                # It's already a dict
+                enhanced_messages.append(msg.copy())
+            else:
+                # Unknown format, try to convert
+                logger.warning(f"Unknown message format: {type(msg)}")
+                enhanced_messages.append({"role": "user", "content": str(msg)})
         
         # Add JSON instruction to system message or create new one
-        if enhanced_messages and enhanced_messages[0]["role"] == "system":
+        if enhanced_messages and enhanced_messages[0].get("role") == "system":
             enhanced_messages[0]["content"] += "\n\n" + json_instruction
         else:
             enhanced_messages.insert(0, {

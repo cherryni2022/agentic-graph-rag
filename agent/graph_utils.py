@@ -20,6 +20,7 @@ from dotenv import load_dotenv
 
 # Import universal LLM client for better model compatibility
 from .universal_llm_client import UniversalLLMClient
+from .zhipu_llm_client import ZhipuAIClient
 
 # Load environment variables
 load_dotenv()
@@ -86,14 +87,15 @@ class GraphitiClient:
                 base_url=self.llm_base_url
             )
             
-            # Create Universal LLM client (supports GLM and other models)
-            # This client automatically falls back to manual JSON parsing
-            # if the model doesn't support OpenAI's structured output API
-            llm_client = UniversalLLMClient(
-                config=llm_config,
-                use_structured_output=True,  # Try structured output first
-                fallback_to_manual_parsing=True  # Fallback to manual parsing for GLM
-            )
+            # Select appropriate LLM client based on model
+            # GLM models use native Zhipu AI SDK for proper structured output
+            # Other models (OpenAI, Gemini, etc.) use OpenAI-compatible client
+            if "glm" in self.llm_choice.lower():
+                logger.info(f"Using ZhipuAIClient for GLM model: {self.llm_choice}")
+                llm_client = ZhipuAIClient(config=llm_config)
+            else:
+                logger.info(f"Using OpenAIClient for model: {self.llm_choice}")
+                llm_client = OpenAIClient(config=llm_config)
             
             # Create OpenAI embedder
             embedder = OpenAIEmbedder(
