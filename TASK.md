@@ -308,6 +308,52 @@ This document tracks all tasks for building the agentic RAG system with knowledg
 
 ---
 
+## Phase 8b: GLM Advanced Structured Output Support (2026-01-03)
+
+### Issue: Dynamic Pydantic Model Validation Failure
+- **Error**: `Input should be a valid dictionary or instance of EntityAttributes_... [type=model_type, input_value=[...], input_type=list]`
+- **Location**: `node_operations.py:extract_attributes_from_node` (L394-L413)
+- **Root Cause**: GLM returns JSON as a **list** when the expected format is a **dict** for dynamically created Pydantic models
+
+### Analysis
+1. **Previous Fix (extract_nodes)**: Worked because `ExtractedEntities` is a static model
+2. **Current Failure**: `pydantic.create_model()` creates dynamic models that GLM struggles with
+3. **GLM Behavior**: `response_format={"type": "json_object"}` only guarantees valid JSON, not schema compliance
+
+### Comprehensive Solution: ZhipuAIClient V2
+
+- [x] **ResponseNormalizer**: Multi-strategy response normalization
+  - JSON markdown cleanup (```json...``` removal)
+  - List-to-dict conversion for single-element arrays
+  - Nested field extraction from schema-like wrappers
+  - Smart field mapping from malformed responses
+
+- [x] **SchemaSimplifier**: Make schemas GLM-friendly
+  - Generate simplified human-readable schema descriptions
+  - Create example JSON outputs for guidance
+  - Reduce complex nested structures
+
+- [x] **Multi-Level Fallback Validation**:
+  1. Direct JSON parse → validate
+  2. Clean JSON → validate
+  3. Normalize structure → validate
+  4. Extract from wrapper → validate
+  5. LLM retry with error feedback
+
+- [x] **Enhanced System Prompt Engineering**:
+  - Explicit JSON-only output instructions
+  - Clear structure requirements (dict not list)
+  - Schema and example inclusion
+
+### Testing
+- [x] Created `test_zhipu_client.py` with three test scenarios:
+  - Simple model (basic sanity)
+  - Static model (ExtractedEntities equivalent)
+  - **Dynamic model** (`pydantic.create_model` - the failing scenario)
+- [x] All tests passing ✅
+
+---
+
 ## Project Status
 
 ✅ **All core functionality completed and tested**
@@ -317,6 +363,6 @@ This document tracks all tasks for building the agentic RAG system with knowledg
 ✅ **Flexible provider system implemented**
 ✅ **CLI with agent transparency features**
 ✅ **Graphiti integration with OpenAI-compatible clients**
-✅ **GLM model compatibility via UniversalLLMClient**
+✅ **GLM model compatibility via ZhipuAIClient with robust response normalization**
 
 The agentic RAG with knowledge graph system is complete and ready for production use.
