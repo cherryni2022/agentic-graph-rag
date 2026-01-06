@@ -54,14 +54,7 @@ Note that this script will drop all tables before creating/recreating!
 
 ### 4. Set up Neo4j
 
-You have a couple easy options for setting up Neo4j:
-
-#### Option A: Using Local-AI-Packaged (Simplified setup - Recommended)
-1. Clone the repository: `git clone https://github.com/coleam00/local-ai-packaged`
-2. Follow the installation instructions to set up Neo4j through the package
-3. Note the username and password you set in .env and the URI will be bolt://localhost:7687
-
-#### Option B: Using Neo4j Desktop
+#### Using Neo4j Desktop
 1. Download and install [Neo4j Desktop](https://neo4j.com/download/)
 2. Create a new project and add a local DBMS
 3. Start the DBMS and set a password
@@ -84,7 +77,7 @@ NEO4J_PASSWORD=your_password
 LLM_PROVIDER=openai
 LLM_BASE_URL=https://api.openai.com/v1
 LLM_API_KEY=sk-your-api-key
-LLM_CHOICE=gpt-4.1-mini
+LLM_CHOICE=xxx
 
 # Embedding Configuration
 EMBEDDING_PROVIDER=openai
@@ -93,7 +86,7 @@ EMBEDDING_API_KEY=sk-your-api-key
 EMBEDDING_MODEL=text-embedding-3-small
 
 # Ingestion Configuration
-INGESTION_LLM_CHOICE=gpt-4.1-nano  # Faster model for processing
+INGESTION_LLM_CHOICE=xxx  # Faster model for processing
 
 # Application Configuration
 APP_ENV=development
@@ -120,6 +113,15 @@ LLM_PROVIDER=gemini
 LLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta
 LLM_API_KEY=your-gemini-key
 LLM_CHOICE=gemini-2.5-flash
+
+LLM_PROVIDER=zhipu
+LLM_BASE_URL=https://open.bigmodel.cn/api/paas/v4/
+LLM_API_KEY=9b07546272e9445d91b0e90808689f62.WUfFQlCBCvttAn3W
+LLM_CHOICE=glm-4.6
+INGESTION_LLM_CHOICE=glm-4.6
+
+# 设置graphiti中协程并发数
+SEMAPHORE_LIMIT=20
 ```
 
 ## Quick Start
