@@ -85,32 +85,55 @@ async def close_database():
 async def create_session(
     user_id: Optional[str] = None,
     metadata: Optional[Dict[str, Any]] = None,
-    timeout_minutes: int = 60
+    timeout_minutes: int = 60,
+    session_id: Optional[str] = None
 ) -> str:
     """
-    Create a new session.
+    Create a new session or update existing one.
     
     Args:
         user_id: Optional user identifier
         metadata: Optional session metadata
         timeout_minutes: Session timeout in minutes
+        session_id: Optional specific session UUID to use
     
     Returns:
         Session ID
     """
     async with db_pool.acquire() as conn:
         expires_at = datetime.now(timezone.utc) + timedelta(minutes=timeout_minutes)
+        meta_json = json.dumps(metadata or {})
         
-        result = await conn.fetchrow(
-            """
-            INSERT INTO sessions (user_id, metadata, expires_at)
-            VALUES ($1, $2, $3)
-            RETURNING id::text
-            """,
-            user_id,
-            json.dumps(metadata or {}),
-            expires_at
-        )
+        if session_id:
+            # Try to insert or update if exists
+            result = await conn.fetchrow(
+                """
+                INSERT INTO sessions (id, user_id, metadata, expires_at)
+                VALUES ($1::uuid, $2, $3, $4)
+                ON CONFLICT (id) 
+                DO UPDATE SET 
+                    metadata = sessions.metadata || EXCLUDED.metadata,
+                    expires_at = EXCLUDED.expires_at,
+                    updated_at = CURRENT_TIMESTAMP
+                RETURNING id::text
+                """,
+                session_id,
+                user_id,
+                meta_json,
+                expires_at
+            )
+        else:
+            # Generate new ID
+            result = await conn.fetchrow(
+                """
+                INSERT INTO sessions (user_id, metadata, expires_at)
+                VALUES ($1, $2, $3)
+                RETURNING id::text
+                """,
+                user_id,
+                meta_json,
+                expires_at
+            )
         
         return result["id"]
 

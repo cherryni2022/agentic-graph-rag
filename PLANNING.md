@@ -236,3 +236,14 @@ APP_PORT=8058
 - Additional LLM providers (Anthropic Claude direct, Cohere, etc.)
 - Embedding provider diversity (Voyage, Cohere embeddings)
 - Model performance optimization and caching
+
+## Phase 9: Streamlit UI Integration (2026-01-07)
+
+### Streamlit Application
+- **streamlit_app.py**: New entry point for UI-based interaction
+- **Features**:
+  - Chat interface with session management
+  - Sidebar configuration for search preferences (Vector/Graph toggle)
+  - Async resource initialization/cleanup
+  - Real-time agent feedback
+- **Dependencies**: Added `streamlit` and `nest_asyncio`

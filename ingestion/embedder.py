@@ -71,7 +71,13 @@ class EmbeddingGenerator:
             logger.warning(f"Unknown model {model}, using default config")
             self.config = {"dimensions": 1536, "max_tokens": 8191}
         else:
-            self.config = self.model_configs[model]
+            self.config = self.model_configs[model].copy()
+        
+        # Override dimensions from environment variable if set (for database compatibility)
+        env_dimension = os.getenv("VECTOR_DIMENSION")
+        if env_dimension:
+            self.config["dimensions"] = int(env_dimension)
+            logger.info(f"Using VECTOR_DIMENSION={env_dimension} from environment")
     
     async def generate_embedding(self, text: str) -> List[float]:
         """

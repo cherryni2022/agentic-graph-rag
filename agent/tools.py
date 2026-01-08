@@ -38,7 +38,7 @@ EMBEDDING_MODEL = get_embedding_model()
 
 async def generate_embedding(text: str) -> List[float]:
     """
-    Generate embedding for text using OpenAI.
+    Generate embedding for text using the configured embedding provider.
     
     Args:
         text: Text to embed
@@ -46,10 +46,14 @@ async def generate_embedding(text: str) -> List[float]:
     Returns:
         Embedding vector
     """
+    # Get configured dimension from environment (default 1536 for OpenAI text-embedding-3-small)
+    embedding_dimension = int(os.getenv("VECTOR_DIMENSION", "1536"))
+    
     try:
         response = await embedding_client.embeddings.create(
             model=EMBEDDING_MODEL,
-            input=text
+            input=text,
+            dimensions=embedding_dimension  # Explicitly specify dimensions for compatibility
         )
         return response.data[0].embedding
     except Exception as e:

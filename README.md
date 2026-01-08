@@ -242,7 +242,50 @@ Microsoft has a significant strategic partnership with OpenAI...
 - `clear` - Clear current session
 - `exit` or `quit` - Exit the CLI
 
-### 6. Test the System
+### 6. Use the Streamlit Web Interface (Alternative)
+
+For a more visual and user-friendly experience, you can use the Streamlit-based web interface instead of or alongside the CLI.
+
+```bash
+# Start the Streamlit app
+streamlit run streamlit_app.py
+
+# The app will be available at http://localhost:8501
+```
+
+#### Streamlit Features
+
+- **Interactive Chat Interface** - Modern chat UI with message history
+- **Search Preference Controls** - Toggle vector search and graph search via sidebar
+- **Session Management** - Create new sessions or continue existing ones
+- **Real-time Response Display** - Watch the agent's response as it generates
+- **Tool Usage Visibility** - See which tools the agent invokes for each query
+
+#### Streamlit UI Overview
+
+The Streamlit interface provides:
+1. **Sidebar Controls**:
+   - Toggle "Use Vector Search" to enable/disable semantic similarity search
+   - Toggle "Use Graph Search" to enable/disable knowledge graph queries
+   - "New Session" button to start a fresh conversation
+   - Current Session ID display
+
+2. **Main Chat Area**:
+   - Displays full conversation history
+   - Input box at the bottom for new questions
+   - Loading spinner while the agent processes queries
+
+#### When to Use Streamlit vs CLI
+
+| Feature | Streamlit | CLI |
+|---------|-----------|-----|
+| Visual Interface | ✅ Rich UI | ❌ Terminal only |
+| API Server Required | ❌ No (direct agent call) | ✅ Yes |
+| Search Toggles | ✅ Sidebar controls | ❌ No |
+| Session Persistence | ✅ Database-backed | ✅ API-backed |
+| Best For | Demos, exploration | Development, scripting |
+
+### 7. Test the System
 
 #### Health Check
 ```bash
